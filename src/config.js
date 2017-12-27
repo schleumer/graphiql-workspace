@@ -285,7 +285,7 @@ export class AppConfig {
   genId() {
     this.state.setState({lastId: this.state.lastId + 1})
 
-    return "" + (this.state.id || "") + this.state.lastId
+    return "" + (this.state.key || "") + this.state.lastId
   }
 
   getState() {
