@@ -2216,7 +2216,7 @@ var AppConfig = exports.AppConfig = function () {
     value: function genId() {
       this.state.setState({ lastId: this.state.lastId + 1 });
 
-      return "" + (this.state.id || "") + this.state.lastId;
+      return "" + (this.state.key || "") + this.state.lastId;
     }
   }, {
     key: "getState",
