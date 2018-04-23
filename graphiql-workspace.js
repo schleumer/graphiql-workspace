@@ -1614,7 +1614,7 @@ var HeaderEditor = exports.HeaderEditor = function (_React$Component) {
           _react2.default.createElement(
             _Button2.default,
             { onClick: this.ok.bind(this), bsStyle: 'primary' },
-            'Ok'
+            'OK'
           ),
           _react2.default.createElement(
             _Button2.default,
@@ -2988,7 +2988,7 @@ module.exports = function (it) {
 };
 
 },{}],41:[function(require,module,exports){
-var core = module.exports = { version: '2.5.3' };
+var core = module.exports = { version: '2.5.1' };
 if (typeof __e == 'number') __e = core; // eslint-disable-line no-undef
 
 },{}],42:[function(require,module,exports){
@@ -3265,7 +3265,7 @@ module.exports = function (Base, NAME, Constructor, next, DEFAULT, IS_SET, FORCE
   var VALUES_BUG = false;
   var proto = Base.prototype;
   var $native = proto[ITERATOR] || proto[FF_ITERATOR] || DEFAULT && proto[DEFAULT];
-  var $default = (!BUGGY && $native) || getMethod(DEFAULT);
+  var $default = $native || getMethod(DEFAULT);
   var $entries = DEFAULT ? !DEF_VALUES ? $default : getMethod('entries') : undefined;
   var $anyNative = NAME == 'Array' ? proto.entries || $native : $native;
   var methods, key, IteratorPrototype;
@@ -3933,7 +3933,6 @@ var wksDefine = require('./_wks-define');
 var enumKeys = require('./_enum-keys');
 var isArray = require('./_is-array');
 var anObject = require('./_an-object');
-var isObject = require('./_is-object');
 var toIObject = require('./_to-iobject');
 var toPrimitive = require('./_to-primitive');
 var createDesc = require('./_property-desc');
@@ -4126,14 +4125,15 @@ $JSON && $export($export.S + $export.F * (!USE_NATIVE || $fails(function () {
   return _stringify([S]) != '[null]' || _stringify({ a: S }) != '{}' || _stringify(Object(S)) != '{}';
 })), 'JSON', {
   stringify: function stringify(it) {
+    if (it === undefined || isSymbol(it)) return; // IE8 returns string on undefined
     var args = [it];
     var i = 1;
     var replacer, $replacer;
     while (arguments.length > i) args.push(arguments[i++]);
-    $replacer = replacer = args[1];
-    if (!isObject(replacer) && it === undefined || isSymbol(it)) return; // IE8 returns string on undefined
-    if (!isArray(replacer)) replacer = function (key, value) {
-      if (typeof $replacer == 'function') value = $replacer.call(this, key, value);
+    replacer = args[1];
+    if (typeof replacer == 'function') $replacer = replacer;
+    if ($replacer || !isArray(replacer)) replacer = function (key, value) {
+      if ($replacer) value = $replacer.call(this, key, value);
       if (!isSymbol(value)) return value;
     };
     args[1] = replacer;
@@ -4150,7 +4150,7 @@ setToStringTag(Math, 'Math', true);
 // 24.3.3 JSON[@@toStringTag]
 setToStringTag(global.JSON, 'JSON', true);
 
-},{"./_an-object":37,"./_descriptors":45,"./_enum-keys":48,"./_export":49,"./_fails":50,"./_global":51,"./_has":52,"./_hide":53,"./_is-array":58,"./_is-object":59,"./_library":66,"./_meta":67,"./_object-create":69,"./_object-dp":70,"./_object-gopd":72,"./_object-gopn":74,"./_object-gopn-ext":73,"./_object-gops":75,"./_object-keys":78,"./_object-pie":79,"./_property-desc":81,"./_redefine":82,"./_set-to-string-tag":84,"./_shared":86,"./_to-iobject":90,"./_to-primitive":93,"./_uid":94,"./_wks":97,"./_wks-define":95,"./_wks-ext":96}],107:[function(require,module,exports){
+},{"./_an-object":37,"./_descriptors":45,"./_enum-keys":48,"./_export":49,"./_fails":50,"./_global":51,"./_has":52,"./_hide":53,"./_is-array":58,"./_library":66,"./_meta":67,"./_object-create":69,"./_object-dp":70,"./_object-gopd":72,"./_object-gopn":74,"./_object-gopn-ext":73,"./_object-gops":75,"./_object-keys":78,"./_object-pie":79,"./_property-desc":81,"./_redefine":82,"./_set-to-string-tag":84,"./_shared":86,"./_to-iobject":90,"./_to-primitive":93,"./_uid":94,"./_wks":97,"./_wks-define":95,"./_wks-ext":96}],107:[function(require,module,exports){
 // https://github.com/tc39/proposal-object-values-entries
 var $export = require('./_export');
 var $entries = require('./_object-to-array')(true);
@@ -5382,7 +5382,7 @@ function onMouseHover(cm, box) {
   if (render) {
     var token = cm.getTokenAt(pos, true);
     if (token) {
-      var info = render(token, options, cm, pos);
+      var info = render(token, options, cm);
       if (info) {
         showPopup(cm, box, info);
       }
@@ -6551,6 +6551,10 @@ function namedKey(style) {
     if (open == -1) return false
     var endLine = end == start ? startLine : self.getLine(end)
     var close = endLine.indexOf(endString, end == start ? open + startString.length : 0);
+    if (close == -1 && start != end) {
+      endLine = self.getLine(--end);
+      close = endLine.indexOf(endString);
+    }
     var insideStart = Pos(start, open + 1), insideEnd = Pos(end, close + 1)
     if (close == -1 ||
         !/comment/.test(self.getTokenTypeAt(insideStart)) ||
@@ -6882,8 +6886,7 @@ function namedKey(style) {
                  (cur.ch <= 2 || cm.getRange(Pos(cur.line, cur.ch - 3), Pos(cur.line, cur.ch - 2)) != ch)) {
         curType = "addFour";
       } else if (identical) {
-        var prev = cur.ch == 0 ? " " : cm.getRange(Pos(cur.line, cur.ch - 1), cur)
-        if (!CodeMirror.isWordChar(next) && prev != ch && !CodeMirror.isWordChar(prev)) curType = "both";
+        if (!CodeMirror.isWordChar(next) && enteringString(cm, cur, ch)) curType = "both";
         else return CodeMirror.Pass;
       } else if (opening && (cm.getLine(cur.line).length == cur.ch ||
                              isClosingBracket(next, pairs) ||
@@ -6935,10 +6938,25 @@ function namedKey(style) {
     return str.length == 2 ? str : null;
   }
 
+  // Project the token type that will exists after the given char is
+  // typed, and use it to determine whether it would cause the start
+  // of a string token.
+  function enteringString(cm, pos, ch) {
+    var line = cm.getLine(pos.line);
+    var token = cm.getTokenAt(pos);
+    if (/\bstring2?\b/.test(token.type) || stringStartsAfter(cm, pos)) return false;
+    var stream = new CodeMirror.StringStream(line.slice(0, pos.ch) + ch + line.slice(pos.ch), 4);
+    stream.pos = stream.start = token.start;
+    for (;;) {
+      var type1 = cm.getMode().token(stream, token.state);
+      if (stream.pos >= pos.ch + 1) return /\bstring2?\b/.test(type1);
+      stream.start = stream.pos;
+    }
+  }
+
   function stringStartsAfter(cm, pos) {
     var token = cm.getTokenAt(Pos(pos.line, pos.ch + 1))
-    return /\bstring/.test(token.type) && token.start == pos.ch &&
-      (pos.ch == 0 || !/\bstring/.test(cm.getTokenTypeAt(pos)))
+    return /\bstring/.test(token.type) && token.start == pos.ch
   }
 });
 
@@ -7617,6 +7635,7 @@ CodeMirror.registerHelper("fold", "include", function(cm, start) {
       var picked = (this.widget && this.widget.picked) || (first && this.options.completeSingle);
       if (this.widget) this.widget.close();
 
+      if (data && this.data && isNewCompletion(this.data, data)) return;
       this.data = data;
 
       if (data && data.list.length) {
@@ -7629,6 +7648,11 @@ CodeMirror.registerHelper("fold", "include", function(cm, start) {
       }
     }
   };
+
+  function isNewCompletion(old, nw) {
+    var moved = CodeMirror.cmpPos(nw.from, old.from)
+    return moved > 0 && old.to.ch - old.from.ch != nw.to.ch - nw.from.ch
+  }
 
   function parseOptions(cm, pos, options) {
     var editor = cm.options.hintOptions;
@@ -8062,7 +8086,7 @@ CodeMirror.registerHelper("fold", "include", function(cm, start) {
       cm.off("change", abort)
       if (state.waitingFor != id) return
       if (arg2 && annotations instanceof CodeMirror) annotations = arg2
-      cm.operation(function() {updateLinting(cm, annotations)})
+      updateLinting(cm, annotations)
     }, passOptions, cm);
   }
 
@@ -8081,9 +8105,9 @@ CodeMirror.registerHelper("fold", "include", function(cm, start) {
       var annotations = getAnnotations(cm.getValue(), passOptions, cm);
       if (!annotations) return;
       if (annotations.then) annotations.then(function(issues) {
-        cm.operation(function() {updateLinting(cm, issues)})
+        updateLinting(cm, issues);
       });
-      else cm.operation(function() {updateLinting(cm, annotations)})
+      else updateLinting(cm, annotations);
     }
   }
 
@@ -8648,7 +8672,7 @@ CodeMirror.registerHelper("fold", "include", function(cm, start) {
         for (var i = 1; i < lines.length - 1; i++)
           if (fold(doc.getLine(line + i)) != lines[i]) continue search
         var end = doc.getLine(line + lines.length - 1), endString = fold(end), lastLine = lines[lines.length - 1]
-        if (endString.slice(0, lastLine.length) != lastLine) continue search
+        if (end.slice(0, lastLine.length) != lastLine) continue search
         return {from: Pos(line, adjustPos(orig, string, cutFrom, fold) + ch),
                 to: Pos(line + lines.length - 1, adjustPos(end, endString, lastLine.length, fold))}
       }
@@ -8963,15 +8987,9 @@ CodeMirror.registerHelper("fold", "include", function(cm, start) {
         var closing = cm.scanForBracket(pos, 1);
         if (!closing) return false;
         if (closing.ch == mirror.charAt(mirror.indexOf(opening.ch) + 1)) {
-          var startPos = Pos(opening.pos.line, opening.pos.ch + 1);
-          if (CodeMirror.cmpPos(startPos, range.from()) == 0 &&
-              CodeMirror.cmpPos(closing.pos, range.to()) == 0) {
-            opening = cm.scanForBracket(opening.pos, -1);
-            if (!opening) return false;
-          } else {
-            newRanges.push({anchor: startPos, head: closing.pos});
-            break;
-          }
+          newRanges.push({anchor: Pos(opening.pos.line, opening.pos.ch + 1),
+                          head: closing.pos});
+          break;
         }
         pos = Pos(closing.pos.line, closing.pos.ch + 1);
       }
@@ -9294,6 +9312,27 @@ CodeMirror.registerHelper("fold", "include", function(cm, start) {
     cm.scrollTo(null, (pos.top + pos.bottom) / 2 - cm.getScrollInfo().clientHeight / 2);
   };
 
+  cmds.selectLinesUpward = function(cm) {
+    cm.operation(function() {
+      var ranges = cm.listSelections();
+      for (var i = 0; i < ranges.length; i++) {
+        var range = ranges[i];
+        if (range.head.line > cm.firstLine())
+          cm.addSelection(Pos(range.head.line - 1, range.head.ch));
+      }
+    });
+  };
+  cmds.selectLinesDownward = function(cm) {
+    cm.operation(function() {
+      var ranges = cm.listSelections();
+      for (var i = 0; i < ranges.length; i++) {
+        var range = ranges[i];
+        if (range.head.line < cm.lastLine())
+          cm.addSelection(Pos(range.head.line + 1, range.head.ch));
+      }
+    });
+  };
+
   function getTarget(cm) {
     var from = cm.getCursor("from"), to = cm.getCursor("to");
     if (CodeMirror.cmpPos(from, to) == 0) {
@@ -9355,6 +9394,8 @@ CodeMirror.registerHelper("fold", "include", function(cm, start) {
     "Cmd-Enter": "insertLineAfter",
     "Shift-Cmd-Enter": "insertLineBefore",
     "Cmd-D": "selectNextOccurrence",
+    "Shift-Cmd-Up": "addCursorToPrevLine",
+    "Shift-Cmd-Down": "addCursorToNextLine",
     "Shift-Cmd-Space": "selectScope",
     "Shift-Cmd-M": "selectBetweenBrackets",
     "Cmd-M": "goToBracket",
@@ -9384,8 +9425,8 @@ CodeMirror.registerHelper("fold", "include", function(cm, start) {
     "Cmd-K Cmd-Backspace": "delLineLeft",
     "Cmd-K Cmd-0": "unfoldAll",
     "Cmd-K Cmd-J": "unfoldAll",
-    "Ctrl-Shift-Up": "addCursorToPrevLine",
-    "Ctrl-Shift-Down": "addCursorToNextLine",
+    "Ctrl-Shift-Up": "selectLinesUpward",
+    "Ctrl-Shift-Down": "selectLinesDownward",
     "Cmd-F3": "findUnder",
     "Shift-Cmd-F3": "findUnderPrevious",
     "Alt-F3": "findAllUnder",
@@ -9415,6 +9456,8 @@ CodeMirror.registerHelper("fold", "include", function(cm, start) {
     "Ctrl-Enter": "insertLineAfter",
     "Shift-Ctrl-Enter": "insertLineBefore",
     "Ctrl-D": "selectNextOccurrence",
+    "Alt-CtrlUp": "addCursorToPrevLine",
+    "Alt-CtrlDown": "addCursorToNextLine",
     "Shift-Ctrl-Space": "selectScope",
     "Shift-Ctrl-M": "selectBetweenBrackets",
     "Ctrl-M": "goToBracket",
@@ -9444,8 +9487,8 @@ CodeMirror.registerHelper("fold", "include", function(cm, start) {
     "Ctrl-K Ctrl-Backspace": "delLineLeft",
     "Ctrl-K Ctrl-0": "unfoldAll",
     "Ctrl-K Ctrl-J": "unfoldAll",
-    "Ctrl-Alt-Up": "addCursorToPrevLine",
-    "Ctrl-Alt-Down": "addCursorToNextLine",
+    "Ctrl-Alt-Up": "selectLinesUpward",
+    "Ctrl-Alt-Down": "selectLinesDownward",
     "Ctrl-F3": "findUnder",
     "Shift-Ctrl-F3": "findUnderPrevious",
     "Alt-F3": "findAllUnder",
@@ -12743,10 +12786,8 @@ function updateHeightsInViewport(cm) {
 // Read and store the height of line widgets associated with the
 // given line.
 function updateWidgetHeight(line) {
-  if (line.widgets) { for (var i = 0; i < line.widgets.length; ++i) {
-    var w = line.widgets[i], parent = w.node.parentNode;
-    if (parent) { w.height = parent.offsetHeight; }
-  } }
+  if (line.widgets) { for (var i = 0; i < line.widgets.length; ++i)
+    { line.widgets[i].height = line.widgets[i].node.parentNode.offsetHeight; } }
 }
 
 // Compute the lines that are visible in a given viewport (defaults
@@ -16542,26 +16583,18 @@ function lookupKeyForEditor(cm, name, handle) {
 // for bound mouse clicks.
 
 var stopSeq = new Delayed;
-
 function dispatchKey(cm, name, e, handle) {
   var seq = cm.state.keySeq;
   if (seq) {
     if (isModifierKey(name)) { return "handled" }
-    if (/\'$/.test(name))
-      { cm.state.keySeq = null; }
-    else
-      { stopSeq.set(50, function () {
-        if (cm.state.keySeq == seq) {
-          cm.state.keySeq = null;
-          cm.display.input.reset();
-        }
-      }); }
-    if (dispatchKeyInner(cm, seq + " " + name, e, handle)) { return true }
+    stopSeq.set(50, function () {
+      if (cm.state.keySeq == seq) {
+        cm.state.keySeq = null;
+        cm.display.input.reset();
+      }
+    });
+    name = seq + " " + name;
   }
-  return dispatchKeyInner(cm, name, e, handle)
-}
-
-function dispatchKeyInner(cm, name, e, handle) {
   var result = lookupKeyForEditor(cm, name, handle);
 
   if (result == "multi")
@@ -16574,6 +16607,10 @@ function dispatchKeyInner(cm, name, e, handle) {
     restartBlink(cm);
   }
 
+  if (seq && !result && /\'$/.test(name)) {
+    e_preventDefault(e);
+    return true
+  }
   return !!result
 }
 
@@ -17085,7 +17122,6 @@ function defineOptions(CodeMirror) {
     clearCaches(cm);
     regChange(cm);
   }, true);
-
   option("lineSeparator", null, function (cm, val) {
     cm.doc.lineSep = val;
     if (!val) { return }
@@ -19126,7 +19162,7 @@ CodeMirror$1.fromTextArea = fromTextArea;
 
 addLegacyProps(CodeMirror$1);
 
-CodeMirror$1.version = "5.33.0";
+CodeMirror$1.version = "5.31.0";
 
 return CodeMirror$1;
 
@@ -19169,7 +19205,7 @@ var _hasClass2 = _interopRequireDefault(_hasClass);
 function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
 
 function addClass(element, className) {
-  if (element.classList) element.classList.add(className);else if (!(0, _hasClass2.default)(element, className)) if (typeof element.className === 'string') element.className = element.className + ' ' + className;else element.setAttribute('class', (element.className && element.className.baseVal || '') + ' ' + className);
+  if (element.classList) element.classList.add(className);else if (!(0, _hasClass2.default)(element)) element.className = element.className + ' ' + className;
 }
 module.exports = exports['default'];
 },{"./hasClass":146}],146:[function(require,module,exports){
@@ -19180,7 +19216,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.default = hasClass;
 function hasClass(element, className) {
-  if (element.classList) return !!className && element.classList.contains(className);else return (" " + (element.className.baseVal || element.className) + " ").indexOf(" " + className + " ") !== -1;
+  if (element.classList) return !!className && element.classList.contains(className);else return (" " + element.className + " ").indexOf(" " + className + " ") !== -1;
 }
 module.exports = exports["default"];
 },{}],147:[function(require,module,exports){
@@ -19212,12 +19248,8 @@ exports.default = { addClass: _addClass2.default, removeClass: _removeClass2.def
 },{"./addClass":145,"./hasClass":146,"./removeClass":148}],148:[function(require,module,exports){
 'use strict';
 
-function replaceClassName(origClass, classToRemove) {
-  return origClass.replace(new RegExp('(^|\\s)' + classToRemove + '(?:\\s|$)', 'g'), '$1').replace(/\s+/g, ' ').replace(/^\s*|\s*$/g, '');
-}
-
 module.exports = function removeClass(element, className) {
-  if (element.classList) element.classList.remove(className);else if (typeof element.className === 'string') element.className = replaceClassName(element.className, className);else element.setAttribute('class', replaceClassName(element.className && element.className.baseVal || '', className));
+  if (element.classList) element.classList.remove(className);else element.className = element.className.replace(new RegExp('(^|\\s)' + className + '(?:\\s|$)', 'g'), '$1').replace(/\s+/g, ' ').replace(/^\s*|\s*$/g, '');
 };
 },{}],149:[function(require,module,exports){
 'use strict';
@@ -19994,7 +20026,7 @@ Object.defineProperty(exports, "__esModule", {
 });
 
 exports.default = function (recalc) {
-  if (!size && size !== 0 || recalc) {
+  if (!size || recalc) {
     if (_inDOM2.default) {
       var scrollDiv = document.createElement('div');
 
@@ -25493,71 +25525,38 @@ var GraphQLLanguageService = exports.GraphQLLanguageService = function () {
     this._graphQLConfig = cache.getGraphQLConfig();
   }
 
-  GraphQLLanguageService.prototype.getDiagnostics = function getDiagnostics(query, uri, isRelayCompatMode) {
-    var queryHasExtensions, projectConfig, schemaPath, queryAST, range, source, fragmentDefinitions, fragmentDependencies, dependenciesSource, validationAst, schema, customRules, customRulesModulePath, rulesPath;
+  GraphQLLanguageService.prototype.getDiagnostics = function getDiagnostics(query, uri) {
+    var source, appName, schema, customRules, fragmentDefinitions, fragmentDependencies, dependenciesSource, customRulesModulePath, rulesPath;
     return regeneratorRuntime.async(function getDiagnostics$(_context) {
       while (1) {
         switch (_context.prev = _context.next) {
           case 0:
-            // Perform syntax diagnostics first, as this doesn't require
-            // schema/fragment definitions, even the project configuration.
-            queryHasExtensions = false;
-            projectConfig = this._graphQLConfig.getConfigForFile(uri);
-            schemaPath = projectConfig.schemaPath;
-            _context.prev = 3;
-            queryAST = (0, _graphql.parse)(query);
+            source = query;
+            appName = this._graphQLConfig.getAppConfigNameByFilePath(uri);
+            // If there's a matching config, proceed to prepare to run validation
 
-            if (!schemaPath || uri !== schemaPath) {
-              queryHasExtensions = queryAST.definitions.some(function (definition) {
-                switch (definition.kind) {
-                  case _kinds.OBJECT_TYPE_DEFINITION:
-                  case _kinds.INTERFACE_TYPE_DEFINITION:
-                  case _kinds.ENUM_TYPE_DEFINITION:
-                  case _kinds.UNION_TYPE_DEFINITION:
-                  case _kinds.SCALAR_TYPE_DEFINITION:
-                  case _kinds.INPUT_OBJECT_TYPE_DEFINITION:
-                  case _kinds.TYPE_EXTENSION_DEFINITION:
-                  case _kinds.DIRECTIVE_DEFINITION:
-                    return true;
-                }
-                return false;
-              });
-            }
-            _context.next = 12;
-            break;
+            schema = void 0;
+            customRules = void 0;
 
-          case 8:
-            _context.prev = 8;
-            _context.t0 = _context['catch'](3);
-            range = (0, _getDiagnostics.getRange)(_context.t0.locations[0], query);
-            return _context.abrupt('return', [{
-              severity: _getDiagnostics.SEVERITY.ERROR,
-              message: _context.t0.message,
-              source: 'GraphQL: Syntax',
-              range: range
-            }]);
-
-          case 12:
-            if (schemaPath) {
-              _context.next = 14;
+            if (!this._graphQLConfig.getSchemaPath(appName)) {
+              _context.next = 18;
               break;
             }
 
-            return _context.abrupt('return', []);
+            _context.next = 7;
+            return regeneratorRuntime.awrap(this._graphQLCache.getSchema(this._graphQLConfig.getSchemaPath(appName)));
 
-          case 14:
+          case 7:
+            schema = _context.sent;
+            _context.next = 10;
+            return regeneratorRuntime.awrap(this._graphQLCache.getFragmentDefinitions(this._graphQLConfig, appName));
 
-            // If there's a matching config, proceed to prepare to run validation
-            source = query;
-            _context.next = 17;
-            return regeneratorRuntime.awrap(this._graphQLCache.getFragmentDefinitions(projectConfig));
-
-          case 17:
+          case 10:
             fragmentDefinitions = _context.sent;
-            _context.next = 20;
+            _context.next = 13;
             return regeneratorRuntime.awrap(this._graphQLCache.getFragmentDependencies(query, fragmentDefinitions));
 
-          case 20:
+          case 13:
             fragmentDependencies = _context.sent;
             dependenciesSource = fragmentDependencies.reduce(function (prev, cur) {
               return prev + ' ' + (0, _graphql.print)(cur.definition);
@@ -25566,29 +25565,8 @@ var GraphQLLanguageService = exports.GraphQLLanguageService = function () {
 
             source = source + ' ' + dependenciesSource;
 
-            validationAst = null;
-            _context.prev = 24;
-
-            validationAst = (0, _graphql.parse)(source);
-            _context.next = 31;
-            break;
-
-          case 28:
-            _context.prev = 28;
-            _context.t1 = _context['catch'](24);
-            return _context.abrupt('return', []);
-
-          case 31:
-            _context.next = 33;
-            return regeneratorRuntime.awrap(this._graphQLCache.getSchema(projectConfig.projectName, queryHasExtensions));
-
-          case 33:
-            schema = _context.sent;
-
-
             // Check if there are custom validation rules to be used
-            customRules = void 0;
-            customRulesModulePath = projectConfig.extensions.customValidationRules;
+            customRulesModulePath = this._graphQLConfig.getCustomValidationRulesModulePath(appName);
 
             if (customRulesModulePath) {
               /* eslint-disable no-implicit-coercion */
@@ -25600,46 +25578,48 @@ var GraphQLLanguageService = exports.GraphQLLanguageService = function () {
               /* eslint-enable no-implicit-coercion */
             }
 
-            return _context.abrupt('return', (0, _getDiagnostics.validateQuery)(validationAst, schema, customRules, isRelayCompatMode));
+          case 18:
+            return _context.abrupt('return', (0, _getDiagnostics.getDiagnostics)(source, schema, customRules));
 
-          case 38:
+          case 19:
           case 'end':
             return _context.stop();
         }
       }
-    }, null, this, [[3, 8], [24, 28]]);
+    }, null, this);
   };
 
   GraphQLLanguageService.prototype.getAutocompleteSuggestions = function getAutocompleteSuggestions(query, position, filePath) {
-    var projectConfig, schema;
+    var appName, schema;
     return regeneratorRuntime.async(function getAutocompleteSuggestions$(_context2) {
       while (1) {
         switch (_context2.prev = _context2.next) {
           case 0:
-            projectConfig = this._graphQLConfig.getConfigForFile(filePath);
+            appName = this._graphQLConfig.getAppConfigNameByFilePath(filePath);
+            schema = void 0;
 
-            if (!projectConfig.schemaPath) {
-              _context2.next = 7;
+            if (!this._graphQLConfig.getSchemaPath(appName)) {
+              _context2.next = 8;
               break;
             }
 
-            _context2.next = 4;
-            return regeneratorRuntime.awrap(this._graphQLCache.getSchema(projectConfig.projectName));
+            _context2.next = 5;
+            return regeneratorRuntime.awrap(this._graphQLCache.getSchema(this._graphQLConfig.getSchemaPath(appName)));
 
-          case 4:
+          case 5:
             schema = _context2.sent;
 
             if (!schema) {
-              _context2.next = 7;
+              _context2.next = 8;
               break;
             }
 
             return _context2.abrupt('return', (0, _getAutocompleteSuggestions2.getAutocompleteSuggestions)(schema, query, position));
 
-          case 7:
+          case 8:
             return _context2.abrupt('return', []);
 
-          case 8:
+          case 9:
           case 'end':
             return _context2.stop();
         }
@@ -25648,12 +25628,12 @@ var GraphQLLanguageService = exports.GraphQLLanguageService = function () {
   };
 
   GraphQLLanguageService.prototype.getDefinition = function getDefinition(query, position, filePath) {
-    var projectConfig, ast, node;
+    var appName, ast, node;
     return regeneratorRuntime.async(function getDefinition$(_context3) {
       while (1) {
         switch (_context3.prev = _context3.next) {
           case 0:
-            projectConfig = this._graphQLConfig.getConfigForFile(filePath);
+            appName = this._graphQLConfig.getAppConfigNameByFilePath(filePath);
             ast = void 0;
             _context3.prev = 2;
 
@@ -25679,7 +25659,7 @@ var GraphQLLanguageService = exports.GraphQLLanguageService = function () {
             break;
 
           case 14:
-            return _context3.abrupt('return', this._getDefinitionForFragmentSpread(query, ast, node, filePath, projectConfig));
+            return _context3.abrupt('return', this._getDefinitionForFragmentSpread(query, ast, node, filePath, this._graphQLConfig, appName));
 
           case 15:
             return _context3.abrupt('return', (0, _getDefinition.getDefinitionQueryResultForDefinitionNode)(filePath, query, node));
@@ -25695,14 +25675,14 @@ var GraphQLLanguageService = exports.GraphQLLanguageService = function () {
     }, null, this, [[2, 6]]);
   };
 
-  GraphQLLanguageService.prototype._getDefinitionForFragmentSpread = function _getDefinitionForFragmentSpread(query, ast, node, filePath, projectConfig) {
+  GraphQLLanguageService.prototype._getDefinitionForFragmentSpread = function _getDefinitionForFragmentSpread(query, ast, node, filePath, graphQLConfig, appName) {
     var fragmentDefinitions, dependencies, localFragDefinitions, typeCastedDefs, localFragInfos, result;
     return regeneratorRuntime.async(function _getDefinitionForFragmentSpread$(_context4) {
       while (1) {
         switch (_context4.prev = _context4.next) {
           case 0:
             _context4.next = 2;
-            return regeneratorRuntime.awrap(this._graphQLCache.getFragmentDefinitions(projectConfig));
+            return regeneratorRuntime.awrap(this._graphQLCache.getFragmentDefinitions(graphQLConfig, appName));
 
           case 2:
             fragmentDefinitions = _context4.sent;
@@ -26577,8 +26557,6 @@ Object.defineProperty(exports, "__esModule", {
 });
 exports.SEVERITY = undefined;
 exports.getDiagnostics = getDiagnostics;
-exports.validateQuery = validateQuery;
-exports.getRange = getRange;
 
 var _assert = require('assert');
 
@@ -26609,16 +26587,16 @@ var SEVERITY = exports.SEVERITY = {
   HINT: 4
 };
 
-function getDiagnostics(query) {
+function getDiagnostics(queryText) {
   var schema = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
   var customRules = arguments[2];
-  var isRelayCompatMode = arguments[3];
 
   var ast = null;
   try {
-    ast = (0, _graphql.parse)(query);
+    ast = (0, _graphql.parse)(queryText);
   } catch (error) {
-    var range = getRange(error.locations[0], query);
+    var range = getRange(error.locations[0], queryText);
+
     return [{
       severity: SEVERITY.ERROR,
       message: error.message,
@@ -26627,20 +26605,12 @@ function getDiagnostics(query) {
     }];
   }
 
-  return validateQuery(ast, schema, customRules, isRelayCompatMode);
-}
-
-function validateQuery(ast) {
-  var schema = arguments.length > 1 && arguments[1] !== undefined ? arguments[1] : null;
-  var customRules = arguments[2];
-  var isRelayCompatMode = arguments[3];
-
   // We cannot validate the query unless a schema is provided.
   if (!schema) {
     return [];
   }
 
-  var validationErrorAnnotations = mapCat((0, _graphqlLanguageServiceUtils.validateWithCustomRules)(schema, ast, customRules, isRelayCompatMode), function (error) {
+  var validationErrorAnnotations = mapCat((0, _graphqlLanguageServiceUtils.validateWithCustomRules)(schema, ast, customRules), function (error) {
     return annotations(error, SEVERITY.ERROR, 'Validation');
   });
   // Note: findDeprecatedUsages was added in graphql@0.9.0, but we want to
@@ -26676,6 +26646,20 @@ function annotations(error, severity, type) {
   });
 }
 
+/**
+ * Get location info from a node in a type-safe way.
+ *
+ * The only way a node could not have a location is if we initialized the parser
+ * (and therefore the lexer) with the `noLocation` option, but we always
+ * call `parse` without options above.
+ */
+function getLocation(node) {
+  var typeCastedNode = node;
+  var location = typeCastedNode.loc;
+  (0, _assert2.default)(location, 'Expected ASTNode to have a location.');
+  return location;
+}
+
 function getRange(location, queryText) {
   var parser = (0, _graphqlLanguageServiceParser.onlineParser)();
   var state = parser.startState();
@@ -26702,20 +26686,6 @@ function getRange(location, queryText) {
   var end = stream.getCurrentPosition();
 
   return new _graphqlLanguageServiceUtils.Range(new _graphqlLanguageServiceUtils.Position(line, start), new _graphqlLanguageServiceUtils.Position(line, end));
-}
-
-/**
- * Get location info from a node in a type-safe way.
- *
- * The only way a node could not have a location is if we initialized the parser
- * (and therefore the lexer) with the `noLocation` option, but we always
- * call `parse` without options above.
- */
-function getLocation(node) {
-  var typeCastedNode = node;
-  var location = typeCastedNode.loc;
-  (0, _assert2.default)(location, 'Expected ASTNode to have a location.');
-  return location;
 }
 },{"assert":12,"graphql":236,"graphql-language-service-parser":221,"graphql-language-service-utils":225}],216:[function(require,module,exports){
 'use strict';
@@ -26912,12 +26882,6 @@ Object.defineProperty(exports, 'getDiagnostics', {
   enumerable: true,
   get: function get() {
     return _getDiagnostics.getDiagnostics;
-  }
-});
-Object.defineProperty(exports, 'validateQuery', {
-  enumerable: true,
-  get: function get() {
-    return _getDiagnostics.validateQuery;
   }
 });
 
@@ -27995,24 +27959,15 @@ var _graphql = require('graphql');
 /**
  * Validate a GraphQL Document optionally with custom validation rules.
  */
-function validateWithCustomRules(schema, ast, customRules, isRelayCompatMode) {
+function validateWithCustomRules(schema, ast, customRules) {
   // Because every fragment is considered for determing model subsets that may
   // be used anywhere in the codebase they're all technically "used" by clients
   // of graphql-data. So we remove this rule from the validators.
   var _require = require('graphql/validation/rules/NoUnusedFragments'),
       NoUnusedFragments = _require.NoUnusedFragments;
 
-  var rulesToSkip = [NoUnusedFragments];
-  if (isRelayCompatMode) {
-    var _require2 = require('graphql/validation/rules/KnownFragmentNames'),
-        KnownFragmentNames = _require2.KnownFragmentNames;
-
-    rulesToSkip.push(KnownFragmentNames);
-  }
   var rules = _graphql.specifiedRules.filter(function (rule) {
-    return !rulesToSkip.some(function (r) {
-      return r === rule;
-    });
+    return rule !== NoUnusedFragments;
   });
 
   var typeInfo = new _graphql.TypeInfo(schema);
@@ -28023,12 +27978,7 @@ function validateWithCustomRules(schema, ast, customRules, isRelayCompatMode) {
   var errors = (0, _graphql.validate)(schema, ast, rules, typeInfo);
 
   if (errors.length > 0) {
-    return errors.filter(function (error) {
-      if (error.message.indexOf('Unknown directive') === -1) {
-        return true;
-      }
-      return !(error.nodes && error.nodes[0] && error.nodes[0].name && error.nodes[0].name.value === 'arguments' || error.nodes && error.nodes[0] && error.nodes[0].name && error.nodes[0].name.value === 'argumentDefinitions');
-    });
+    return errors;
   }
 
   return [];
@@ -28041,7 +27991,7 @@ function validateWithCustomRules(schema, ast, customRules, isRelayCompatMode) {
    *
    *  
    */
-},{"graphql":236,"graphql/validation/rules/KnownFragmentNames":288,"graphql/validation/rules/NoUnusedFragments":293}],227:[function(require,module,exports){
+},{"graphql":236,"graphql/validation/rules/NoUnusedFragments":293}],227:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
@@ -61895,7 +61845,7 @@ if (typeof module !== 'undefined' && typeof exports === 'object') {
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{}],318:[function(require,module,exports){
 //! moment.js
-//! version : 2.20.1
+//! version : 2.19.1
 //! authors : Tim Wood, Iskren Chernev, Moment.js contributors
 //! license : MIT
 //! momentjs.com
@@ -62555,7 +62505,7 @@ var matchTimestamp = /[+-]?\d+(\.\d{1,3})?/; // 123456789 123456789.123
 
 // any word (or two) characters or numbers including two/three word month in arabic.
 // includes scottish gaelic two word and hyphenated months
-var matchWord = /[0-9]{0,256}['a-z\u00A0-\u05FF\u0700-\uD7FF\uF900-\uFDCF\uFDF0-\uFF07\uFF10-\uFFEF]{1,256}|[\u0600-\u06FF\/]{1,256}(\s*?[\u0600-\u06FF]{1,256}){1,2}/i;
+var matchWord = /[0-9]*['a-z\u00A0-\u05FF\u0700-\uD7FF\uF900-\uFDCF\uFDF0-\uFFEF]+|[\u0600-\u06FF\/]+(\s*?[\u0600-\u06FF]+){1,2}/i;
 
 
 var regexes = {};
@@ -62710,7 +62660,7 @@ function get (mom, unit) {
 
 function set$1 (mom, unit, value) {
     if (mom.isValid() && !isNaN(value)) {
-        if (unit === 'FullYear' && isLeapYear(mom.year()) && mom.month() === 1 && mom.date() === 29) {
+        if (unit === 'FullYear' && isLeapYear(mom.year())) {
             mom._d['set' + (mom._isUTC ? 'UTC' : '') + unit](value, mom.month(), daysInMonth(value, mom.month()));
         }
         else {
@@ -63816,11 +63766,10 @@ function defineLocale (name, config) {
 
 function updateLocale(name, config) {
     if (config != null) {
-        var locale, tmpLocale, parentConfig = baseConfig;
+        var locale, parentConfig = baseConfig;
         // MERGE
-        tmpLocale = loadLocale(name);
-        if (tmpLocale != null) {
-            parentConfig = tmpLocale._config;
+        if (locales[name] != null) {
+            parentConfig = locales[name]._config;
         }
         config = mergeConfigs(parentConfig, config);
         locale = new Locale(config);
@@ -63925,7 +63874,7 @@ function currentDateArray(config) {
 // note: all values past the year are optional and will default to the lowest possible value.
 // [year, month, day , hour, minute, second, millisecond]
 function configFromArray (config) {
-    var i, date, input = [], currentDate, expectedWeekday, yearToUse;
+    var i, date, input = [], currentDate, yearToUse;
 
     if (config._d) {
         return;
@@ -63975,8 +63924,6 @@ function configFromArray (config) {
     }
 
     config._d = (config._useUTC ? createUTCDate : createDate).apply(null, input);
-    expectedWeekday = config._useUTC ? config._d.getUTCDay() : config._d.getDay();
-
     // Apply timezone offset from input. The actual utcOffset can be changed
     // with parseZone.
     if (config._tzm != null) {
@@ -63988,7 +63935,7 @@ function configFromArray (config) {
     }
 
     // check for mismatching day of week
-    if (config._w && typeof config._w.d !== 'undefined' && config._w.d !== expectedWeekday) {
+    if (config._w && typeof config._w.d !== 'undefined' && config._w.d !== config._d.getDay()) {
         getParsingFlags(config).weekdayMismatch = true;
     }
 }
@@ -65196,24 +65143,19 @@ function toString () {
     return this.clone().locale('en').format('ddd MMM DD YYYY HH:mm:ss [GMT]ZZ');
 }
 
-function toISOString(keepOffset) {
+function toISOString() {
     if (!this.isValid()) {
         return null;
     }
-    var utc = keepOffset !== true;
-    var m = utc ? this.clone().utc() : this;
+    var m = this.clone().utc();
     if (m.year() < 0 || m.year() > 9999) {
-        return formatMoment(m, utc ? 'YYYYYY-MM-DD[T]HH:mm:ss.SSS[Z]' : 'YYYYYY-MM-DD[T]HH:mm:ss.SSSZ');
+        return formatMoment(m, 'YYYYYY-MM-DD[T]HH:mm:ss.SSS[Z]');
     }
     if (isFunction(Date.prototype.toISOString)) {
         // native implementation is ~50x faster, use it when we can
-        if (utc) {
-            return this.toDate().toISOString();
-        } else {
-            return new Date(this._d.valueOf()).toISOString().replace('Z', formatMoment(m, 'Z'));
-        }
+        return this.toDate().toISOString();
     }
-    return formatMoment(m, utc ? 'YYYY-MM-DD[T]HH:mm:ss.SSS[Z]' : 'YYYY-MM-DD[T]HH:mm:ss.SSSZ');
+    return formatMoment(m, 'YYYY-MM-DD[T]HH:mm:ss.SSS[Z]');
 }
 
 /**
@@ -65569,7 +65511,7 @@ addRegexToken('Do', function (isStrict, locale) {
 
 addParseToken(['D', 'DD'], DATE);
 addParseToken('Do', function (input, array) {
-    array[DATE] = toInt(input.match(match1to2)[0]);
+    array[DATE] = toInt(input.match(match1to2)[0], 10);
 });
 
 // MOMENTS
@@ -66381,7 +66323,7 @@ addParseToken('x', function (input, array, config) {
 // Side effect imports
 
 
-hooks.version = '2.20.1';
+hooks.version = '2.19.1';
 
 setHookCallback(createLocal);
 
@@ -66412,19 +66354,6 @@ hooks.relativeTimeRounding  = getSetRelativeTimeRounding;
 hooks.relativeTimeThreshold = getSetRelativeTimeThreshold;
 hooks.calendarFormat        = getCalendarFormat;
 hooks.prototype             = proto;
-
-// currently HTML5 input type only supports 24-hour formats
-hooks.HTML5_FMT = {
-    DATETIME_LOCAL: 'YYYY-MM-DDTHH:mm',             // <input type="datetime-local" />
-    DATETIME_LOCAL_SECONDS: 'YYYY-MM-DDTHH:mm:ss',  // <input type="datetime-local" step="1" />
-    DATETIME_LOCAL_MS: 'YYYY-MM-DDTHH:mm:ss.SSS',   // <input type="datetime-local" step="0.001" />
-    DATE: 'YYYY-MM-DD',                             // <input type="date" />
-    TIME: 'HH:mm',                                  // <input type="time" />
-    TIME_SECONDS: 'HH:mm:ss',                       // <input type="time" step="1" />
-    TIME_MS: 'HH:mm:ss.SSS',                        // <input type="time" step="0.001" />
-    WEEK: 'YYYY-[W]WW',                             // <input type="week" />
-    MONTH: 'YYYY-MM'                                // <input type="month" />
-};
 
 return hooks;
 
@@ -78137,7 +78066,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 
-var _ponyfill = require('./ponyfill.js');
+var _ponyfill = require('./ponyfill');
 
 var _ponyfill2 = _interopRequireDefault(_ponyfill);
 
@@ -78161,7 +78090,7 @@ if (typeof self !== 'undefined') {
 var result = (0, _ponyfill2['default'])(root);
 exports['default'] = result;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./ponyfill.js":398}],398:[function(require,module,exports){
+},{"./ponyfill":398}],398:[function(require,module,exports){
 'use strict';
 
 Object.defineProperty(exports, "__esModule", {
